@@ -1,0 +1,131 @@
+\documentclass{article}
+\usepackage[polish]{babel}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[,hdivide={1cm,*,1cm},vdivide={1cm,*,1cm}]{geometry}
+\usepackage{indentfirst}
+\usepackage{graphicx}
+\usepackage{enumitem}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{algorithm}
+\usepackage{mathtools}
+\usepackage[noend]{algpseudocode}
+\usepackage{amsmath} % for 'bmatrix' environment
+\usepackage{newtxtext,newtxmath} % optional -- Times Roman clone
+
+\title{Interpolacja wielomianowa}
+\author{Michał Fica}
+\date{November 2021}
+
+\begin{document}
+
+\maketitle
+
+\section{Wielomian interpolacyjny Lagrange'a}
+
+\subsection{Interpolacja Lagrange'a}
+Wielomian w postaci Lagrange'a służy do przybliżenia funkcji $f$ w sytuacji, gdy znane są wartości tej funkcji w punktach $ x_{0}, x_{1},  ..., x_{n}$. Dla wielomianu stopnia $n$ wybiera się $n+1$ punktów $ x_{0}, x_{1},  \ldots, x_{n}$ i wielomian przyjmuje postać: 
+
+$$ (1.1) \qquad \qquad \qquad w(x) = \sum_{i=0}^n y_{i} \cdot\prod_{j=0 \wedge j \neq i}^{n}(x-x_{j})/(x_{i}-x_{j})$$
+gdzie $$y_{i} = f(x_{i}) $$Tak zdefiniowany wielomian jest wielomianem interpolacyjnym. Niech $$ L_{i}(x) := \prod_{j=0 \wedge j\neq i}^{n}(x-x_{j})/(x_{i}-x_{j})$$Wielomian $L_{i}$ zeruje się w każdym z węzłów poza $x_{i}$, natomiast wartość wielomianu $L_{i}$ w punkcie $x_{i}$ jest równa : 
+$$ L_{i}(x_{i}) = \prod_{j=0 \wedge j\neq i}^{n}(x_{i}-x_{j})/(x_{i}-x_{j}) = \prod_{j=0 \wedge j\neq i}^{n}1 = 1$$Dlatego : 
+$$w(x_{i}) =  \sum_{i=0}^n f(x_{i}) \cdot L_{i}(x_{i}) = f(x_{1})\cdot0 + \ldots + f(x_{i})\cdot1 + \ldots + f(x_{n})\cdot0 = f(x_{i})$$
+
+\subsection{Postać barycentryczna}
+Postać $(1.1)$ wielomianu interpolacyjnego ma znaczenie głównie teoretyczne, dla celów praktycznych zaleca się używać formy barycentrycznej, która wygląda następująco: 
+$$ w(x) = [\sum_{i=0}^{n} (w_{i} \cdot f(x_{i}))/(x-x_{i}) ]/[\sum_{i=0}^{n} (w_{i}/(x-x_{i})] $$ 
+
+
+
+
+\section{Postać Newtona wielomianu}
+
+\subsection{Iloraz różnicowy}
+Wielomian w postaci Newtona zawiera w swojej konstrukcji ilorazy różnicowe. Definiuje się je w następujący sposób: 
+$$ f[x_{i},\ldots,x_{i+j+1}] = \sum_{i=0}^k (f(x_{i})/\prod_{j=0,j\neq i}^k(x_{i}-x_{j}))$$Iloraz różnicowy można także określić następującym wzorem rekurencyjnym: $$ f[x_{i}] = f(x_{i})$$
+$$ f[x_{i},\ldots,x_{i+j+1}] = (f[x_{i+1},\ldots,x_{i+j+1}] - f[x_{i},\ldots,x_{i+j}])/(x_{i+j+1} - x_{i})$$
+
+\subsection{Postać Newtona}
+Aby przybliżyć funkcję $f$ wielomianem w postaci Newtona stopnia $n$ wybiera się $n+1$ punktów $ x_{0}, x_{1},  ..., x_{n}$ i buduje się następujący wielomian: 
+$$ w(x) = a_{0} +  \sum_{i=1}^n a_{i} \cdot\prod_{j=0}^{i-1} (x-x_{j})$$
+gdzie 
+$$ a_{i} = f[x_{0}, \ldots, x_{i}]$$
+
+\subsection{Obliczanie wartości, uogólniony schemat Hornera}
+Wielomian $w(x)$ można przekształcić do postaci, z której jasno wynika, w jaki sposób obliczać wartość tego wielomianu w danym punkcie.
+$$w(x) = a_{0} + a_{1}(x-x_{0}) + a_{1}(x-x_{0})(x-x_{1}) + \ldots + a_{n}(x - x_{0})\ldots(x-x_{n})$$
+$$= a_{0} + (x-x_{0})(a_{1} + a_{2}\cdot(x-x_{1})+\cdots+a_{n}(x-x_{1})\cdots(x-x_{n}))$$
+$$= a_{0} + (x-x_{0})(a_{1} + \cdots (a_{n-2} + (x-x_{n-2})(a_{n-1} + (x-x_{n-1})(a_{n})))\cdots)$$
+
+Zatem algorytm wygląda następująco: 
+$$w_{n} = a_{n}$$
+$$w_{k} = w_{k+1}\cdot(x-x_{k}) + a_{k}, (k=n-1,\ldots,0)$$
+$$w(x) = w_{0}$$
+
+\section{Konwersja postaci Newtona na postać Lagrange'a}
+\subsection{Opis zadania}
+
+Wprowadzając pewne oznaczenia postać Lagranga wielomianu można zapisać w następującej formie: 
+$$w(x) = \sum_{i=0}^n\sigma_{i}\prod_{j=0 \wedge j\neq i}^n(x-x_{j})$$
+$$\text{gdzie } \sigma_{i}\text{:=} w_{i}\cdot y_{i},  w_{i}:=1/\prod_{j=0,j\neqi}^n(t_{i}-t_{j}), i\in \{0,..,n\}$$
+
+Mając podany wielomian $w \in \prod_{n}$ w postaci Newtona (tzn. jego współczynniki $a_{i}$) należy wyliczyć postać Lagrange'a tego wielomianu tj. znaleźć takie współczynniki $\sigma_{i}$, że: 
+$$w(x) = \sum_{i=0}^n\sigma_{i}\prod_{j=0 \wedge j\neq i}^n(x-x_{j})$$
+\subsection{Algorytm}
+Na podstawie definicji współczynników $a_{i}$ otrzymujemy:
+$$ a_{i} = \sum_{i=0}^k w(x_{i})/\prod_{j=0 \wedge j\neq i}^k (x_{i} - x_{j}) = \sum_{i=0}^k \sigma_{i} \prod_{j=k+1}^n(x_{i}-x_{j})$$
+
+Korzystając z powyższej równości nasz problem możemy sprowadzić do rozwiązania następującego układu równań (3.3):
+
+\[
+\begin{bmatrix}
+a_{0} \\ a_{1} \\ a_{3} \\ \dots \\ a_{n-1} \\ a_{n}
+\end{bmatrix}
+=
+\begin{bmatrix}
+$\prod_{j=1}^n (x_{0}-x_{j})$ & 0 & 0 & \dots & 0 \\
+$\prod_{j=2}^n (x_{0}-x_{j})$ & $\prod_{j=2}^n (x_{0}-x_{j})$ & 0 & \dots & 0 \\
+$\prod_{j=3}^n (x_{0}-x_{j})$ & $\prod_{j=3}^n (x_{0}-x_{j})$ & $\prod_{j=3}^n (x_{0}-x_{j})$ & \dots & 0 \\
+\dots  & \dots  & \dots  & \dots & \dots  \\
+(x_{0}-x_{n}) & (x_{1}-x_{n}) & (x_{2}-x_{n}) & \dots & 0 \\
+1 & 1 & 1 & \dots & 1 
+\end{bmatrix}
+\begin{bmatrix}
+\sigma_{0} \\ \sigma_{1} \\ \sigma_{2} \\ \dots \\ \sigma_{n-1} \\ \sigma_{n} 
+\end{bmatrix}
+\]
+
+Prawa strona $k$-tego równania składa się z sumy $k+1$ niezerowych składników, z których  każdy jest iloczynem pewnych $n-k$ czynników. Algorytm będzie w $n$ krokach przekształcał pewne z tych równań. Wartość lewej strony $k$-tego równania po $i$ krokach algorytmu będziemy pamiętać w zmiennej $a_{k}^{(j)}$.
+Algorytm wygląda następująco: 
+$$ a_{k}^{(0)}:=a_{k}, k\in \{0,\cdots,n\}$$
+$$ \text{dla } i \in \{1,\cdots,n\} , k \in \{0,\cdots,i-1\} :$$
+$$ a_{k}^{(i)} :=a_{k}^{(i-1)}/(x_{k} - x_{i}) $$
+$$ a_{i}^{k+1}:=a_{i}^{k} - a_{k}^{i}$$
+$$ $$ 
+$$ \sigma_{i}:=a_{i}^{(n)} \texti{, } i \in \{0,\cdots,n\}$$
+
+W $i$-tym kroku algorytmu wykonujemy następujące czynności. W $i$ pierwszych równaniach, które składają się tylko z 1 niezerowego składnika $\prod_{j=i}^n(x_{k}-x_{i})$ pozbywamy się pierwszego czynnika tego iloczynu. W $i+1$ równaniu usuwamy wszystkie składniki oprócz jednego, sprowadzając je do postaci, w której lewa strona składa się jedynie z 1 niezerowego składnika. Po wykonaniu n kroków algorytmu równania zostaną rozwiązane. Algorytm ten ma złożoność $O(n^2)$. 
+
+\section{Konwersja postaci Lagrange'a na postać Newtona}
+
+\subsection{Opis zadania}
+Dany jest wielomian $w \in \prod _{n}$ w postaci Lagrange'a, to znaczy znane są jego współczynniki $\sigma_{i}$ z punktu (3.1). Celem jest znalezienie współczynników $a_{i}$ z postaci Newtona tego wielomianu. 
+
+\subsection{Algorytm}
+
+Powtarzając rozumowanie z podpunktu (3.2), otrzymujemy układ równań (3.3), w którym niewiadomymi tym razem są współczynniki $a_{i}$ natomiast dane są współczynniki $\sigma_{i}$ oraz węzły $x_{i}$. Będziemy wyliczać kolejne współczynniki $a_{i}$ w kolejności od $a_{n}$ do $a_{0}$. W k-tym kroku działania algorytmu sumujemy składniki prawej strony (n-k)-tego równania, a następnie uaktualniamy ich wartość. 
+
+Algorytm wygląda następująco: 
+$$ \sigma_{i}^{0} := \sigma_{i}\text{, } i \in \{0, \ldots, n\} $$
+$$ $$ 
+$$ \text{dla }  k \in \{0, \ldots, n \} : $$
+$$ \sigma_{n-k}^{k+1} := \sum_{i=0}^{n-k}\sigma_{i}^{k} $$
+$$ \sigma_{i}^{k+1} := (x_{i} - x_{n-k}) \cdot \sigma_{i}^{k} \text{ dla } i \in \{n-k, \ldots, 0\} $$
+$$ $$ 
+$$ a_{i} := \sigma_{i}^{n+1-i} \text{  } i\in \{0,\ldots,n\} $$ 
+
+Algorytm ten ma złożoność $O(n^2)$.
+
+\end{document}
+
