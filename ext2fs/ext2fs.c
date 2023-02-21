@@ -1,7 +1,3 @@
-/*
- * Oświadczam, że zapoznałem(-am) się z regulaminem prowadzenia zajęć
- * i jestem świadomy(-a) konsekwencji niestosowania się do podanych tam zasad.
- */
 #ifdef STUDENT
 /* Imię i nazwisko, numer indeksu: Michał Fica 321881 */
 #endif
