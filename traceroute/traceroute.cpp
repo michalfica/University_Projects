@@ -12,6 +12,8 @@
 #include <sys/select.h>
 #include <sys/time.h>
 #include <assert.h>
+#include <string>
+#include <iostream>
 
 u_int16_t compute_icmp_checksum (const void *buff, int length)
 {
@@ -37,6 +39,29 @@ struct icmp create_header(){
     return header;
 } 
 
+ssize_t send_packet(const std::string ip_addr, 
+                 const int &sockfd, 
+                 const struct icmp &header, 
+                 const int ttl){
+
+    struct sockaddr_in recipient;
+    bzero (&recipient, sizeof(recipient));
+    recipient.sin_family = AF_INET;
+    inet_pton(AF_INET, ip_addr.c_str(), &recipient.sin_addr);
+
+    setsockopt (sockfd, IPPROTO_IP, IP_TTL, &ttl, sizeof(int));
+
+    ssize_t bytes_sent = sendto (
+                            sockfd,
+                            &header,
+                            sizeof(header),
+                            0,
+                            (struct sockaddr*)&recipient,
+                            sizeof(recipient)
+                            );
+    return bytes_sent;
+}
+
 int main( int argc, char *argv[])
 {   
     if(argc != 2){
@@ -45,45 +70,25 @@ int main( int argc, char *argv[])
         exit(EXIT_FAILURE);
     }
 
-    char *dest_addr = argv[1];
-    printf("dest_addres: %s\n", dest_addr);
+    std::string dest_addr = argv[1];
+    std::cout<<"dest_addres: " << dest_addr << "\n";
 
-    // create a raw socket with ICMP protocol 
-    int sockfd = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
-    if(sockfd < 0){
+    int sockfd; // create a raw socket with ICMP protocol 
+    if((sockfd = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP)) < 0){
         printf("socket() error\n");
         exit(EXIT_FAILURE);
     }
-    printf("socket created \n");
 
-    // fd_set descriptors;
-    // FD_ZERO (&descriptors);
-    // FD_SET (sockfd, &descriptors);
-
-    for( int i=1; i<=30; i++ ){
+    for( int i=1; i<=2; i++ ){
+        int ttl = i; 
 
         // sent packets -------------------------------------------------------------
         for(int j=0; j<3; j++){
+
             struct icmp header = create_header();
+            ssize_t bytes_send = send_packet(dest_addr, sockfd, header, ttl);
 
-            struct sockaddr_in recipient;
-            bzero (&recipient, sizeof(recipient));
-            recipient.sin_family = AF_INET;
-            inet_pton(AF_INET, "adres_ip", &recipient.sin_addr);
-
-            int ttl = 42;
-            setsockopt (sockfd, IPPROTO_IP, IP_TTL, &ttl, sizeof(int));
-
-            ssize_t bytes_sent = sendto (
-                                    sockfd,
-                                    &header,
-                                    sizeof(header),
-                                    0,
-                                    (struct sockaddr*)&recipient,
-                                    sizeof(recipient)
-                                    );
-
-        // printf("ICMP packets send\n");
+            printf("ICMP packets send %ld\n", bytes_send);
         }
 
         // // wait for response packets ------------------------------------------------
