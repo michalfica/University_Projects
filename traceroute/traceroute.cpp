@@ -39,6 +39,8 @@ struct icmp create_header(u_int16_t id, u_int16_t seq){
     header.icmp_code = 0;
     header.icmp_hun.ih_idseq.icd_id = id;   //getpid();??
     header.icmp_hun.ih_idseq.icd_seq = seq; //???
+
+    std::cout << "ustawiam id pakietu: " << id << " seq: " << seq <<'\n';
     header.icmp_cksum = 0;
     header.icmp_cksum = compute_icmp_checksum ((u_int16_t*)&header, sizeof(header));
 
@@ -84,13 +86,13 @@ int main( int argc, char *argv[])
         exit(EXIT_FAILURE);
     }
 
-    for( int i=1; i<=15; i++ ){
+    for( int i=1; i<=9; i++ ){
         int ttl = i; 
 
         // sent packets -------------------------------------------------------------
-        for(int j=0; j<1; j++){
-            u_int16_t seq = (ttl << 2) + j;
-            struct icmp header = create_header(10, seq);
+        for(int j=0; j<3; j++){
+            u_int16_t seq = j; //(ttl << 2) + j;
+            struct icmp header = create_header(ttl, seq);
             ssize_t bytes_send = send_packet(dest_addr, sockfd, header, ttl);
 
             printf("ICMP packets send %ld\n", bytes_send);
@@ -127,6 +129,8 @@ int main( int argc, char *argv[])
 
             struct ip* 			ip_header = (struct ip*) buffer;
             ssize_t				ip_header_len = 4 * ip_header->ip_hl;
+            u_int8_t* icmp_packet = buffer + 4 * ip_header->ip_hl;
+            struct icmp* icmp_header = (struct icmp*) icmp_packet;
 
             printf ("IP header: "); 
             print_as_bytes (buffer, ip_header_len);
@@ -134,7 +138,13 @@ int main( int argc, char *argv[])
 
             printf ("IP data:   ");
             print_as_bytes (buffer + ip_header_len, packet_len - ip_header_len);
-            printf("\n\n");
+            printf("\n");
+
+            u_int16_t id  = icmp_header->icmp_hun.ih_idseq.icd_id;
+            u_int16_t seq = icmp_header->icmp_hun.ih_idseq.icd_seq;
+
+            std::cout << "id pakietu: " << id << " seq: " << seq << "\n\n";
+
         }
     }
 }
