@@ -160,8 +160,6 @@ int main(int argc, char *argv[]) {
 
       if (ready < 0) {
         printf("select() error\n");
-      } else if (ready == 0) {
-        break;
       }
 
       struct sockaddr_in sender;
@@ -188,7 +186,7 @@ int main(int argc, char *argv[]) {
         struct icmp *icmp_header = (struct icmp *)icmp_packet;
         ssize_t icmp_header_len = 8;
 
-        // time exceeded
+        // Time to live exceeded in transit
         if (icmp_header->icmp_type == ICMP_TIMXCEED) {
           ssize_t inner_packet = ip_header_len + icmp_header_len;
           ip_header = (struct ip *)(buffer + inner_packet);
