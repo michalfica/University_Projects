@@ -71,7 +71,7 @@ int main( int argc, char *argv[])
             recipient.sin_family = AF_INET;
             inet_pton(AF_INET, "adres_ip", &recipient.sin_addr);
 
-            ttl = 42;
+            int ttl = 42;
             setsockopt (sockfd, IPPROTO_IP, IP_TTL, &ttl, sizeof(int));
 
             ssize_t bytes_sent = sendto (
