@@ -17,6 +17,47 @@
 #include <chrono>
 #include <ctime> 
 
+const int MX_REP = 100;
+// -----------------------------------------------------------------
+// PRZENIEŚĆ DO URZYTECZNYCH (osobnego pliku)
+// -----------------------------------------------------------------
+struct packet{
+    int id;
+    int ttl;
+    int reply_received;
+    std::chrono::system_clock::time_point time_start;
+    std::chrono::system_clock::time_point time_end;
+    std::chrono::duration<double> time_duration;
+    std::string reply_ip_addr;
+};
+
+int cnt = 0;
+packet packets[MX_REP+5];
+
+void print_row( packet *p1, packet *p2, packet *p3 ){
+    int amount_of_responses = p1->reply_received + p2->reply_received + p3->reply_received;
+    if( amount_of_responses == 0 ){
+        std::cout<< cnt/3 <<". * * * \n";
+        return;
+    }
+
+    if( p1->reply_received==1 ){
+        std::cout << cnt/3 <<". " << p1->reply_ip_addr << "\n";
+        return ;
+    }
+    
+    if( p2->reply_received==1 ){
+        std::cout << cnt/3 <<". " << p2->reply_ip_addr << "\n";
+        return ;
+    }
+    
+    if( p3->reply_received==1 ){
+        std::cout << cnt/3 <<". " << p3->reply_ip_addr << "\n";
+        return ;
+    }
+}
+// -----------------------------------------------------------------
+
 void print_as_bytes (unsigned char* buff, ssize_t length)
 {
 	for (ssize_t i = 0; i < length; i++, buff++)
@@ -39,10 +80,8 @@ struct icmp create_header(u_int16_t id, u_int16_t seq){
 
     header.icmp_type = ICMP_ECHO;
     header.icmp_code = 0;
-    header.icmp_hun.ih_idseq.icd_id = id;   //getpid();??
-    header.icmp_hun.ih_idseq.icd_seq = seq; //???
-
-    std::cout << "ustawiam id pakietu: " << id << " seq: " << seq <<'\n';
+    header.icmp_hun.ih_idseq.icd_id = id;   
+    header.icmp_hun.ih_idseq.icd_seq = seq; 
     header.icmp_cksum = 0;
     header.icmp_cksum = compute_icmp_checksum ((u_int16_t*)&header, sizeof(header));
 
@@ -80,7 +119,6 @@ int main( int argc, char *argv[])
     }
 
     std::string dest_addr = argv[1];
-    std::cout<<"dest_addres: " << dest_addr << "\n";
 
     int sockfd; // create a raw socket with ICMP protocol 
     if((sockfd = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP)) < 0){
@@ -88,37 +126,36 @@ int main( int argc, char *argv[])
         exit(EXIT_FAILURE);
     }
 
-    for( int i=1; i<=9; i++ ){
+    for( int i=1; i<=30; i++ ){
         int ttl = i; 
 
         // sent packets -------------------------------------------------------------
         for(int j=0; j<3; j++){
-            u_int16_t seq = j; //(ttl << 2) + j;
-            struct icmp header = create_header(ttl, seq);
+            u_int16_t seq = ttl; 
+            int id = cnt;
+            struct icmp header = create_header(id, seq);
             ssize_t bytes_send = send_packet(dest_addr, sockfd, header, ttl);
-
-            printf("ICMP packets send %ld\n", bytes_send);
+            if(bytes_send < 0){
+                std::cout << "sendto() error \n";
+            }
+            packets[id].id = id;
+            packets[id].ttl = ttl;
+            packets[id].time_start = std::chrono::system_clock::now();
+            packets[id].reply_received = 0;
+            cnt++;
         }
-        std::cout << "wysłałem wszystko dla ttl = " << ttl << '\n';
-        // auto start = std::chrono::system_clock::now();
-        // // Some computation here
-        // auto end = std::chrono::system_clock::now();
-        // std::chrono::duration<double> elapsed_seconds = end-start;
 
-        // // wait for response packets ------------------------------------------------
+        // wait for response packets ------------------------------------------------
         fd_set descriptors;
         FD_ZERO (&descriptors);
         FD_SET (sockfd, &descriptors);
 
         struct timeval tv; tv.tv_sec = 1; tv.tv_usec = 0;
-
         int responses = 0;
 
         while (responses < 3 && (tv.tv_sec > 0 || tv.tv_usec > 0))
         {
-            std::cout<<"zaczynam czekać (max 1sec) na pojawienie się jakiegoś pakietu\n";
             int ready = select (sockfd+1, &descriptors, NULL, NULL, &tv);
-            std::cout<<"gotowych pakietów jest: "<<ready<<'\n';
 
             if(ready < 0){
                 printf("select() error\n");
@@ -130,26 +167,17 @@ int main( int argc, char *argv[])
             socklen_t 			sender_len = sizeof(sender);
             u_int8_t 			buffer[IP_MAXPACKET];
 
-            //---------------------------------------------------------------------------
             // receive packets ----------------------------------------------------------
             for (;;) {
-                std::cout<<"zaczynam odbieranie pakietów z gniazda receivem\n";
-
                 ssize_t packet_len = recvfrom (sockfd, buffer, IP_MAXPACKET, MSG_DONTWAIT, (struct sockaddr*)&sender, &sender_len);
-                std::cout<<"odebralem dl pakietu to: "<<packet_len<<'\n';
 
-                if (packet_len < 0) {
-                    fprintf(stderr, "recvfrom error: %s\n", strerror(errno)); 
-                    // return EXIT_FAILURE;
-                    break;
-                }
-                if( packet_len == 0){
+                if (packet_len <= 0) {
                     break;
                 }
 
                 char sender_ip_str[20]; 
                 inet_ntop(AF_INET, &(sender.sin_addr), sender_ip_str, sizeof(sender_ip_str));
-                printf ("Received IP packet with ICMP content from: %s\n", sender_ip_str);
+                // printf ("Received IP packet with ICMP content from: %s\n", sender_ip_str);
 
                 struct ip* 			ip_header = (struct ip*) buffer;
                 ssize_t				ip_header_len = 4 * ip_header->ip_hl;
@@ -172,26 +200,23 @@ int main( int argc, char *argv[])
                     icmp_header = (struct icmp *)icmp_packet;
                 }
 
-                printf ("IP header: "); 
-                print_as_bytes (buffer, ip_header_len);
-                printf("\n");
-
-                printf ("IP data:   ");
-                print_as_bytes (buffer + ip_header_len, packet_len - ip_header_len);
-                printf("\n");
-
                 u_int16_t id  = icmp_header->icmp_hun.ih_idseq.icd_id;
-                u_int16_t seq = icmp_header->icmp_hun.ih_idseq.icd_seq;
+                u_int16_t packet_ttl = icmp_header->icmp_hun.ih_idseq.icd_seq;
 
-                std::cout << "id pakietu: " << id << " seq: " << seq << "\n\n";
+                // std::cout << "id pakietu: " << id << " ttl: " << packet_ttl << "\n\n";
 
                 // Checking if packet is a response to our last requests
-                if(seq == ttl && !skip) {
+                if(packet_ttl == ttl && !skip) {
+                    packets[id].time_end = std::chrono::system_clock::now();
+                    packets[id].time_duration = packets[id].time_end - packets[id].time_start;
+                    packets[id].reply_ip_addr = sender_ip_str;
+                    packets[id].reply_received = 1;
                     responses++;
                 }
 
             }
             
         }
+        print_row(&packets[(cnt/3)-1], &packets[(cnt/3)], &packets[(cnt/3)+1]);
     }
 }
