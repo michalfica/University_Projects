@@ -16,6 +16,8 @@
 #include <iostream>
 #include <chrono>
 #include <ctime> 
+#include <set> 
+#include <cmath>
 
 const int MX_REP = 100;
 // -----------------------------------------------------------------
@@ -35,26 +37,41 @@ int cnt = 0;
 packet packets[MX_REP+5];
 
 void print_row( packet *p1, packet *p2, packet *p3 ){
+    // std::cout<<"PRINTUJE WIERSZ:\n";
+    int row_number = cnt/3; 
+    std::cout << row_number << ". ";
+
     int amount_of_responses = p1->reply_received + p2->reply_received + p3->reply_received;
     if( amount_of_responses == 0 ){
-        std::cout<< cnt/3 <<". * * * \n";
+        std::cout<< "*\n";
         return;
     }
 
+    // std::cout << "amount of responses : "<< amount_of_responses << "\n";
+
+    std::set<std::string> distinc_ip_addr;
+    distinc_ip_addr.clear();
+
     if( p1->reply_received==1 ){
-        std::cout << cnt/3 <<". " << p1->reply_ip_addr << "\n";
-        return ;
+        distinc_ip_addr.insert(p1->reply_ip_addr);
     }
-    
     if( p2->reply_received==1 ){
-        std::cout << cnt/3 <<". " << p2->reply_ip_addr << "\n";
-        return ;
+        distinc_ip_addr.insert(p2->reply_ip_addr);
     }
-    
     if( p3->reply_received==1 ){
-        std::cout << cnt/3 <<". " << p3->reply_ip_addr << "\n";
-        return ;
+        distinc_ip_addr.insert(p3->reply_ip_addr);
     }
+
+    for(auto s : distinc_ip_addr)
+        std::cout<<s << ' ';
+
+    if( amount_of_responses != 3){
+        std::cout << "???\n";
+        return;
+    }
+
+    double avg_time_response = (p1->time_duration.count() + p2->time_duration.count() + p3->time_duration.count())/3;
+    std::cout<<round(avg_time_response *1000)<<"ms \n";
 }
 // -----------------------------------------------------------------
 
@@ -126,6 +143,8 @@ int main( int argc, char *argv[])
         exit(EXIT_FAILURE);
     }
 
+    bool destination_reached = false;
+
     for( int i=1; i<=30; i++ ){
         int ttl = i; 
 
@@ -184,16 +203,10 @@ int main( int argc, char *argv[])
                 u_int8_t* icmp_packet = buffer + 4 * ip_header->ip_hl;
                 struct icmp* icmp_header = (struct icmp*) icmp_packet;
                 ssize_t icmp_header_len = 8;
-                
-                // Type 8 - loopback
-                bool skip = false;
-                if(icmp_header->icmp_type == 8) {
-                    skip = true;
-                }
 
-                // Type 11 - TTL exceeded, extracting the original request
-                if(icmp_header->icmp_type == 11) {
-                    ssize_t inner_packet = ip_header_len + icmp_header_len; // Moving to inner ICMP
+                // time exceeded
+                if(icmp_header->icmp_type == ICMP_TIMXCEED) {
+                    ssize_t inner_packet = ip_header_len + icmp_header_len;
                     ip_header = (struct ip *)(buffer + inner_packet);
                     ip_header_len = 4 * ip_header->ip_hl;
                     icmp_packet = buffer + inner_packet + ip_header_len;
@@ -203,10 +216,12 @@ int main( int argc, char *argv[])
                 u_int16_t id  = icmp_header->icmp_hun.ih_idseq.icd_id;
                 u_int16_t packet_ttl = icmp_header->icmp_hun.ih_idseq.icd_seq;
 
-                // std::cout << "id pakietu: " << id << " ttl: " << packet_ttl << "\n\n";
+                if(packet_ttl == ttl) {
+                    
+                    if( sender_ip_str == dest_addr ){
+                        destination_reached = true;
+                    }
 
-                // Checking if packet is a response to our last requests
-                if(packet_ttl == ttl && !skip) {
                     packets[id].time_end = std::chrono::system_clock::now();
                     packets[id].time_duration = packets[id].time_end - packets[id].time_start;
                     packets[id].reply_ip_addr = sender_ip_str;
@@ -217,6 +232,10 @@ int main( int argc, char *argv[])
             }
             
         }
-        print_row(&packets[(cnt/3)-1], &packets[(cnt/3)], &packets[(cnt/3)+1]);
+        print_row(&packets[cnt-3], &packets[cnt-2], &packets[cnt-1]);
+        // 
+        if( destination_reached ){
+            break;
+        }
     }
 }
