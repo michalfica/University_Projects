@@ -16,7 +16,7 @@
 u_int16_t compute_icmp_checksum (const void *buff, int length)
 {
 	u_int32_t sum;
-	const u_int16_t* ptr = buff;
+	const u_int16_t* ptr = (const u_int16_t*)buff;
 	assert (length % 2 == 0);
 	for (sum = 0; length > 0; length -= 2)
 		sum += *ptr++;
@@ -26,7 +26,7 @@ u_int16_t compute_icmp_checksum (const void *buff, int length)
 
 struct icmp create_header(){
     // printf("creating header now\n");
-    struct icmp header
+    struct icmp header;
 
     header.icmp_type = ICMP_ECHO;
     header.icmp_code = 0;
@@ -56,68 +56,61 @@ int main( int argc, char *argv[])
     }
     printf("socket created \n");
 
-    struct sockaddr_in recipient;
-    bzero (&recipient, sizeof(recipient));
-    recipient.sin_family = AF_INET;
-    inet_pton(AF_INET, dest_addr, &recipient.sin_addr);
-
-    fd_set descriptors;
-    FD_ZERO (&descriptors);
-    FD_SET (sockfd, &descriptors);
+    // fd_set descriptors;
+    // FD_ZERO (&descriptors);
+    // FD_SET (sockfd, &descriptors);
 
     for( int i=1; i<=30; i++ ){
-        int ttl = i;
-        setsockopt (sockfd, IPPROTO_IP, IP_TTL, &ttl, sizeof(int));
-
-        for(int j=0; j<3; j++){
-            struct icmp header = create_header();
-        }
-        // create packet to send ----------------------------------------------------
-        //---------------------------------------------------------------------------
 
         // sent packets -------------------------------------------------------------
-        if(sendto(sockfd, &header1, sizeof(header1), 0, 
-                    (struct sockaddr*)&recipient, sizeof(recipient)) < 0){
-            printf("sendto() header1 error\n");
-        }
+        for(int j=0; j<3; j++){
+            struct icmp header = create_header();
 
-        if(sendto(sockfd, &header2, sizeof(header2), 0, 
-                    (struct sockaddr*)&recipient, sizeof(recipient)) < 0){
-            printf("sendto() header2 error\n");
-        }
+            struct sockaddr_in recipient;
+            bzero (&recipient, sizeof(recipient));
+            recipient.sin_family = AF_INET;
+            inet_pton(AF_INET, "adres_ip", &recipient.sin_addr);
 
-        if(sendto(sockfd, &header3, sizeof(header3), 0, 
-                    (struct sockaddr*)&recipient, sizeof(recipient)) < 0){
-            printf("sendto() header2 error \n");
-        }
+            ttl = 42;
+            setsockopt (sockfd, IPPROTO_IP, IP_TTL, &ttl, sizeof(int));
+
+            ssize_t bytes_sent = sendto (
+                                    sockfd,
+                                    &header,
+                                    sizeof(header),
+                                    0,
+                                    (struct sockaddr*)&recipient,
+                                    sizeof(recipient)
+                                    );
+
         // printf("ICMP packets send\n");
-        //---------------------------------------------------------------------------
-        
-        // wait for response packets ------------------------------------------------
-        struct timeval tv; tv.tv_sec = 1; tv.tv_usec = 0;
-        int ready = select (sockfd+1, &descriptors, NULL, NULL, &tv);
-        if(ready < 0){
-            printf("select() error\n");
         }
-        printf("gotowych pakietów do odebrania: %d\n", ready);
 
-        //---------------------------------------------------------------------------
+        // // wait for response packets ------------------------------------------------
+        // struct timeval tv; tv.tv_sec = 1; tv.tv_usec = 0;
+        // int ready = select (sockfd+1, &descriptors, NULL, NULL, &tv);
+        // if(ready < 0){
+        //     printf("select() error\n");
+        // }
+        // printf("gotowych pakietów do odebrania: %d\n", ready);
 
-        // receive packets ----------------------------------------------------------
-        for(int j = 0; j < ready; j++){
-            struct sockaddr_in sender;
-            socklen_t          sender_len = sizeof(sender);
-            u_int8_t           buffer [IP_MAXPACKET];
+        // //---------------------------------------------------------------------------
 
-            ssize_t packet_len = recvfrom (sockfd, buffer, IP_MAXPACKET, MSG_DONTWAIT, 
-                                (struct sockaddr*)&sender, &sender_len);
-            if(packet_len < 0){
-                printf("recvfrom() error \n");
-            }
+        // // receive packets ----------------------------------------------------------
+        // for(int j = 0; j < ready; j++){
+        //     struct sockaddr_in sender;
+        //     socklen_t          sender_len = sizeof(sender);
+        //     u_int8_t           buffer [IP_MAXPACKET];
 
-            char sender_ip_str[20]; 
-		    inet_ntop(AF_INET, &(sender.sin_addr), sender_ip_str, sizeof(sender_ip_str));
-		    printf ("Received IP packet with ICMP content from: %s\n", sender_ip_str);
-        }
+        //     ssize_t packet_len = recvfrom (sockfd, buffer, IP_MAXPACKET, MSG_DONTWAIT, 
+        //                         (struct sockaddr*)&sender, &sender_len);
+        //     if(packet_len < 0){
+        //         printf("recvfrom() error \n");
+        //     }
+
+        //     char sender_ip_str[20]; 
+		//     inet_ntop(AF_INET, &(sender.sin_addr), sender_ip_str, sizeof(sender_ip_str));
+		//     printf ("Received IP packet with ICMP content from: %s\n", sender_ip_str);
+        // }
     }
 }
