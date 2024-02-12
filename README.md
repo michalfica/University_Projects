@@ -1,2 +1,2 @@
-# University_Projects
-Projects I realised during my studies "Joint Studies in Computer Science and Mathematics" at University of Wrocław
+# 1. Ext2 read only filesystem implementation
+# 2. Traceroute algorithm implementation
